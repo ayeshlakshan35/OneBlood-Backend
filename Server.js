@@ -49,6 +49,9 @@ app.use("/api/routeshospital", hospitalRoutes);
 const bloodRoutes = require("./routes/bloodroutes");
 app.use("/api/bloodroutes", bloodRoutes);
 
+const campRoutes = require("./routes/campRoutes");
+app.use("/api/camp", campRoutes);
+
 
 
 // Multer error handling middleware — AFTER routes but BEFORE global error handler
