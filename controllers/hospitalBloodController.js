@@ -2,7 +2,6 @@ const HospitalBloodUnit = require("../models/HospitalBlood");
 const Hospital = require("../models/Hospital");
 const mongoose = require("mongoose");
 
-
 // Test model functionality
 try {
   const testModel = new HospitalBloodUnit({
@@ -15,19 +14,15 @@ try {
   console.error("❌ Error testing HospitalBloodUnit model:", error);
 }
 
-// 🩸 Add blood
+// 🩸 Add blood (positive to add, negative to subtract)
 exports.addBloodUnits = async (req, res) => {
- 
-  
-  const hospitalId = req.hospital.id; // Use req.hospital.id from authMiddleware (JWT token contains 'id')
+  const hospitalId = req.hospital.id;
   console.log("🔍 Debug - hospitalId:", hospitalId);
-  
-  // Convert string ID to ObjectId if needed
-  const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) 
-    ? new mongoose.Types.ObjectId(hospitalId) 
+
+  const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId)
+    ? new mongoose.Types.ObjectId(hospitalId)
     : hospitalId;
-  console.log("🔍 Debug - hospitalObjectId:", hospitalObjectId);
-  
+
   // Verify hospital exists
   try {
     const hospitalExists = await Hospital.findById(hospitalObjectId);
@@ -40,54 +35,74 @@ exports.addBloodUnits = async (req, res) => {
     console.error("❌ Error checking hospital:", error);
     return res.status(500).json({ error: "Error verifying hospital" });
   }
-  
+
   try {
-    const bloodData = req.body.bloodData; // Frontend sends bloodData array
+    const bloodData = req.body.bloodData;
     console.log("🔍 Debug - bloodData:", bloodData);
-    
+
     if (!bloodData || !Array.isArray(bloodData)) {
-      console.log("🔍 Debug - Invalid blood data format");
       return res.status(400).json({ message: "Invalid blood data format" });
     }
 
-    // Validate each blood entry
+    // Normalize blood types & validate
     for (const entry of bloodData) {
-      if (!entry.bloodType || !entry.units || typeof entry.units !== 'number' || entry.units <= 0) {
+      if (
+        !entry.bloodType ||
+        typeof entry.units !== "number" ||
+        entry.units === 0
+      ) {
         console.log("🔍 Debug - Invalid blood entry:", entry);
         return res.status(400).json({ message: "Invalid blood entry format" });
       }
+
+      // Normalize bloodType minus signs to ASCII hyphen-minus '-'
+      const normalizedBloodType = entry.bloodType.replace(/[−–—]/g, "-");
+
+      // Check current stock for this bloodType at this hospital
+      const currentStock = await HospitalBloodUnit.aggregate([
+        { $match: { hospital: hospitalObjectId, bloodType: normalizedBloodType } },
+        { $group: { _id: null, total: { $sum: "$units" } } },
+      ]);
+      const stockTotal = currentStock[0]?.total || 0;
+
+      if (stockTotal + entry.units < 0) {
+        return res.status(400).json({
+          message: `Not enough stock of ${normalizedBloodType} to remove ${Math.abs(
+            entry.units
+          )} units (current stock: ${stockTotal})`,
+        });
+      }
+
+      // Update the entry bloodType to normalized version
+      entry.bloodType = normalizedBloodType;
     }
 
+    // Map entries to insert
     const entries = bloodData.map(({ bloodType, units }) => ({
       hospital: hospitalObjectId,
-      bloodType: bloodType.replace(/[−–—]/g, '-'), // Normalize different types of minus signs to regular hyphen
+      bloodType,
       units,
     }));
-    
+
     console.log("🔍 Debug - entries to insert:", entries);
 
     await HospitalBloodUnit.insertMany(entries);
     console.log("🔍 Debug - Blood units inserted successfully");
-    res.status(200).json({ message: "Blood units added successfully" });
+    res.status(200).json({ message: "Blood units updated successfully" });
   } catch (error) {
     console.error("❌ Error adding blood units:", error);
-    console.error("❌ Error stack:", error.stack);
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
-
 // 🧾 View own entries - Aggregated by blood type
 exports.getHospitalBlood = async (req, res) => {
-  const hospitalId = req.hospital.id; // Use req.hospital.id from authMiddleware (JWT token contains 'id')
-  
-  // Convert string ID to ObjectId if needed
-  const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) 
-    ? new mongoose.Types.ObjectId(hospitalId) 
+  const hospitalId = req.hospital.id;
+  const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId)
+    ? new mongoose.Types.ObjectId(hospitalId)
     : hospitalId;
 
   try {
-    // Get aggregated blood data for this hospital
     const aggregatedData = await HospitalBloodUnit.aggregate([
       { $match: { hospital: hospitalObjectId } },
       {
@@ -95,20 +110,21 @@ exports.getHospitalBlood = async (req, res) => {
           _id: "$bloodType",
           totalUnits: { $sum: "$units" },
           entryCount: { $sum: 1 },
-          lastUpdated: { $max: "$createdAt" }
-        }
+          lastUpdated: { $max: "$createdAt" },
+        },
       },
-      { $sort: { _id: 1 } }
+      { $sort: { _id: 1 } },
     ]);
 
-    // Get detailed history for this hospital
-    const detailedHistory = await HospitalBloodUnit.find({ hospital: hospitalObjectId })
+    const detailedHistory = await HospitalBloodUnit.find({
+      hospital: hospitalObjectId,
+    })
       .sort({ createdAt: -1 })
-      .limit(10); // Limit to last 10 entries
+      .limit(10);
 
     res.status(200).json({
       aggregated: aggregatedData,
-      history: detailedHistory
+      history: detailedHistory,
     });
   } catch (err) {
     console.error("❌ Error fetching hospital blood:", err);
@@ -128,9 +144,8 @@ exports.getOverallBloodSummary = async (req, res) => {
       },
     ]);
 
-    // Convert array of objects to simple object with blood types as keys
     const formattedSummary = {};
-    summary.forEach(item => {
+    summary.forEach((item) => {
       formattedSummary[item._id] = item.totalUnits;
     });
 
@@ -152,7 +167,6 @@ exports.getBloodHistory = async (req, res) => {
   }
 };
 
-
 // 📦 Get blood data for all hospitals
 exports.getAllHospitalsBloodData = async (req, res) => {
   try {
@@ -169,22 +183,23 @@ exports.getAllHospitalsBloodData = async (req, res) => {
           bloodData: {
             $push: {
               bloodType: "$_id.bloodType",
-              totalUnits: "$totalUnits"
-            }
-          }
-        }
-      }
+              totalUnits: "$totalUnits",
+            },
+          },
+        },
+      },
     ]);
 
-    // Populate hospital names and district
     const withHospitalDetails = await Promise.all(
       result.map(async (entry) => {
-        const hospital = await Hospital.findById(entry._id).select("hospitalName district");
+        const hospital = await Hospital.findById(entry._id).select(
+          "hospitalName district"
+        );
         return {
           hospitalId: entry._id,
           hospitalName: hospital?.hospitalName || "Unknown Hospital",
           district: hospital?.district || "Unknown District",
-          bloodData: entry.bloodData
+          bloodData: entry.bloodData,
         };
       })
     );
