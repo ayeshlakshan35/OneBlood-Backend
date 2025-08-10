@@ -137,6 +137,17 @@ const getHospitalProfile = async (req, res) => {
   }
 };
 
+//.....................get All Hospitals ..................
+const getAllHospitals = async (req, res) => {
+  try {
+    const hospitals = await Hospital.find({}).select("hospitalName district address phoneNumber");
+    res.status(200).json(hospitals);
+  } catch (error) {
+    console.error("Error fetching all hospitals:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 
 // -------------------- LOGOUT HOSPITAL --------------------
 exports.logoutHospital = (req, res) => {
@@ -144,4 +155,9 @@ exports.logoutHospital = (req, res) => {
   res.status(200).json({ message: "Logged out successfully" });
 };
 
-module.exports = { registerHospital, loginHospital, getHospitalProfile};
+module.exports = {
+  registerHospital,
+  loginHospital,
+  getHospitalProfile,
+  getAllHospitals,
+};
