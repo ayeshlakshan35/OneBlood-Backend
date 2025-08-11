@@ -76,10 +76,7 @@ app.get("/", (req, res) => {
 
 // MongoDB connection
 mongoose
-  .connect(MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(MONGO_URI)
   .then(() => {
     console.log("✅ Connected to MongoDB");
     app.listen(PORT, () => {
@@ -88,6 +85,7 @@ mongoose
   })
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err.message);
+    console.error("💡 Make sure your MONGO_URI is correct and your IP is whitelisted in MongoDB Atlas");
     process.exit(1); // Stop app if DB connection fails
   });
 
