@@ -126,7 +126,12 @@ const loginHospital = async (req, res) => {
 //.....................get Hospital name ..................
 const getHospitalProfile = async (req, res) => {
   try {
-    const hospital = await Hospital.findById(req.hospital.id).select("hospitalName");
+    const hospitalId = req.hospital?.id;
+    if (!hospitalId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const hospital = await Hospital.findById(hospitalId).select("hospitalName");
     if (!hospital) {
       return res.status(404).json({ message: "Hospital not found" });
     }

@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 
 const bloodSchema = new mongoose.Schema({
-
   bloodData: [
     {
       bloodType: {
@@ -12,12 +11,12 @@ const bloodSchema = new mongoose.Schema({
         type: Number,
         required: true,
       },
+      addedAt: {
+        type: Date,
+        default: Date.now, // track each update time
+      },
     },
   ],
-  addedAt: {
-    type: Date,
-    default: Date.now,
-  },
 });
 
 module.exports = mongoose.model("Blood", bloodSchema);
