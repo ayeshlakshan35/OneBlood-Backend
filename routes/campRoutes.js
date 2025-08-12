@@ -5,7 +5,12 @@ const { verifyToken } = require('../middleware/authMiddleware');
 const upload = require('../middleware/upload');
 
 router.post('/add', verifyToken, upload.single('document'), addCamp);
-router.get('/my-camps', verifyToken, getUserCamps);
+router.get('/user-camps', verifyToken, getUserCamps);
 router.get('/all-camps', getAllCamps);
-router.delete('/delete/:id', verifyToken, deleteCamp);
+router.delete('/:id', verifyToken, deleteCamp);
+
+// Test endpoint to check if routes are working
+router.get('/test', (req, res) => {
+  res.json({ message: "Camp routes are working!" });
+});
 module.exports = router;
