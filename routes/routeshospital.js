@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const upload = require("../middleware/upload");
-const { verifyToken } = require("../middleware/authMiddleware");
+const verifyToken = require("../middleware/authMiddleware");
 const { registerHospital, loginHospital, getHospitalProfile, getAllHospitals } = require("../controllers/routeshospitalController");
 
 // POST: Register hospital (with file upload)

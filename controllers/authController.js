@@ -101,3 +101,61 @@ exports.loginUser = async (req, res) => {
     res.status(500).json({ message: "Server error during login" });
   }
 };
+
+exports.updateProfile = async (req, res) => {
+  try {
+    console.log("🔍 Debug - Update Profile Request:");
+    console.log("🔍 User from token:", req.user);
+    console.log("🔍 Request body:", req.body);
+    
+    const userId = req.user.id;
+    console.log("🔍 User ID to update:", userId);
+    
+    if (!userId) {
+      return res.status(400).json({ message: "User ID not found in token" });
+    }
+    
+    const updateData = { ...req.body };
+
+    // Remove sensitive fields that shouldn't be updated
+    delete updateData.password;
+    delete updateData.email; // Email should not be changed via this endpoint
+
+    console.log("🔍 Data to update:", updateData);
+
+    // Update user
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Return updated user data (excluding password)
+    const userResponse = {
+      id: updatedUser._id,
+      firstName: updatedUser.firstName,
+      lastName: updatedUser.lastName,
+      dob: updatedUser.dob,
+      phone: updatedUser.phone,
+      nic: updatedUser.nic,
+      address: updatedUser.address,
+      city: updatedUser.city,
+      state: updatedUser.state,
+      postalCode: updatedUser.postalCode,
+      email: updatedUser.email,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: userResponse
+    });
+  } catch (err) {
+    console.error("Profile Update Error:", err.message);
+    res.status(500).json({ message: "Server error during profile update" });
+  }
+};

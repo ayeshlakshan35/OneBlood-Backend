@@ -11,7 +11,7 @@ const {
   getRejectedDonorRequestsByPhone
 } = require("../controllers/donorRoutesController");
 const upload = require("../middleware/upload"); // your multer config middleware
-const { verifyToken } = require("../middleware/authMiddleware");
+const verifyToken = require("../middleware/authMiddleware");
 
 // Public route for donor to submit eligibility
 router.post("/add-donor", upload.single("identityProof"), addDonorEligibility);

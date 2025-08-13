@@ -31,10 +31,18 @@ exports.verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log("🔍 Debug - JWT decoded:", decoded);
-    req.hospital = decoded; // ✅ useful if you want email or id later
+    
+    // Set user info for both users and hospitals
+    req.user = decoded;
+    req.hospital = decoded; // Keep for backward compatibility
+    
     next();
   } catch (err) {
     console.error("JWT verification failed:", err);
     res.status(401).json({ message: "Invalid or expired token" });
   }
 };
+
+// Export the middleware for use in routes
+module.exports = exports.verifyToken;
+module.exports.verifyToken = exports.verifyToken;
